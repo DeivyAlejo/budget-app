@@ -31,8 +31,9 @@ services:
       - key: CORS_ORIGINS
         value: https://budget-app-frontend.onrender.com
 
-  - type: static
+  - type: web
     name: budget-app-frontend
+    env: static
     rootDir: frontend
     plan: free
     buildCommand: npm ci && npm run build
