@@ -25,9 +25,9 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://budget-app-frontend.onrender.com
+        value: https://budget-app-frontend-wbcu.onrender.com,http://localhost:5173,http://127.0.0.1:5173
       - key: CORS_ORIGINS
-        value: https://budget-app-frontend.onrender.com
+        value: https://budget-app-frontend-wbcu.onrender.com,http://localhost:5173,http://127.0.0.1:5173
       - key: REGISTRATION_REQUIRES_INVITE
         value: true
       - key: REQUIRE_ADMIN_APPROVAL
