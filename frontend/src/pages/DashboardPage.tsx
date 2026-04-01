@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { apiClient } from '../api/client'
@@ -14,6 +15,7 @@ import type {
   CategoryTotal,
   Expense,
   PaymentMethod,
+  User,
 } from '../types/api'
 
 const now = new Date()
@@ -47,6 +49,11 @@ export default function DashboardPage() {
   const [expenseFormError, setExpenseFormError] = useState('')
 
   const addExpenseCardRef = useRef<HTMLElement | null>(null)
+
+  const meQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: async () => (await apiClient.get<User>('/auth/me')).data,
+  })
 
   const categoriesQuery = useQuery({
     queryKey: ['categories'],
@@ -264,9 +271,11 @@ export default function DashboardPage() {
             Month
             <input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} />
           </label>
+          {meQuery.data?.is_admin && <Link className="button-link" to="/admin">Admin Panel</Link>}
           <button onClick={() => logout()}>Log out</button>
         </div>
       </header>
+
 
       <section className="card monthly-summary-card">
         <h2>Month Snapshot</h2>
@@ -335,36 +344,179 @@ export default function DashboardPage() {
                 <li
                   key={item.category_id}
                   style={{
-                    backgroundColor: withHexAlpha(categoryColor, '1A'),
-                    borderLeft: `4px solid ${categoryColor}`,
-                    borderRadius: '8px',
-                    paddingLeft: '0.6rem',
+                    backgroundColor: withHexAlpha(categoryColor, '24'),
+                    borderRadius: '10px',
+                    padding: '0.55rem 0.7rem',
                   }}
+                  onClick={() => setSelectedCategoryId(item.category_id)}
                 >
-                  <button className="link-button category-total-name" onClick={() => setSelectedCategoryId(item.category_id)}>
+                  <button className="link-button category-total-name" type="button">
                     {item.category_name}
                   </button>
-                  <span className="category-total-value">${item.total_amount}</span>
+                  <span className="category-total-value">{currencyFormatter.format(Number(item.total_amount))}</span>
+                </li>
+              )
+            })}
+          </ul>
+          <p className="muted spaced-top">Click category rows to open detail panel.</p>
+        </article>
+
+        <article className="card">
+          <h2>Expenses Table</h2>
+          <ul className="list expense-list">
+            {expensesQuery.data?.map((item) => {
+              const categoryName = categoryNameById.get(item.category_id) ?? 'Unknown'
+              const categoryColor = getCategoryColor(item.category_id, categories)
+
+              return (
+                <li
+                  key={item.id}
+                  style={{
+                    backgroundColor: withHexAlpha(categoryColor, '17'),
+                    borderRadius: '10px',
+                    padding: '0.55rem 0.7rem',
+                  }}
+                >
+                  <span className="expense-date">{formatDisplayDate(item.spent_at)}</span>
+                  <strong className="expense-category" style={{ color: categoryColor }}>
+                    {categoryName}
+                  </strong>
+                  <span className="expense-description">{item.description}</span>
+                  <span className="expense-amount">{currencyFormatter.format(Number(item.amount))}</span>
+                  <button type="button" onClick={() => startEditingExpense(item)}>
+                    Edit
+                  </button>
+                  <button type="button" className="delete" onClick={() => deleteExpense.mutate(item.id)}>
+                    Delete
+                  </button>
                 </li>
               )
             })}
           </ul>
         </article>
+      </section>
+
+      {selectedCategoryId && detailQuery.data && (
+        <section className="card">
+          <h2>{detailQuery.data.category_name} Details</h2>
+          <p>
+            Total: <strong>{currencyFormatter.format(Number(detailQuery.data.total_amount))}</strong>
+          </p>
+          <ul className="list">
+            {detailQuery.data.expenses.map((item) => (
+              <li key={item.expense_id}>
+                <span>{formatDisplayDate(item.spent_at)}</span>
+                <span>{item.description}</span>
+                <span>{currencyFormatter.format(Number(item.amount))}</span>
+              </li>
+            ))}
+          </ul>
+          <button className="secondary" onClick={() => setSelectedCategoryId(null)}>
+            Close
+          </button>
+        </section>
+      )}
+
+      <section className="grid two">
+        <article className="card">
+          <div className="section-header">
+            <h2>Monthly Budget</h2>
+            <button
+              className="collapse-toggle"
+              onClick={() => setIsBudgetSectionExpanded(!isBudgetSectionExpanded)}
+              type="button"
+              title={isBudgetSectionExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isBudgetSectionExpanded ? '-' : '+'}
+            </button>
+          </div>
+          {isBudgetSectionExpanded && (
+            <>
+              <p className="muted">Selected: {year}-{String(month).padStart(2, '0')}</p>
+              <div className="form-grid">
+                <input
+                  type="number"
+                  placeholder="Planned amount"
+                  value={budgetAmount}
+                  onChange={(e) => setBudgetAmount(e.target.value)}
+                />
+                <label className="inline">
+                  <input
+                    type="checkbox"
+                    checked={copyPrevious}
+                    onChange={(e) => setCopyPrevious(e.target.checked)}
+                  />
+                  Copy allocations from previous month
+                </label>
+                <button onClick={() => createBudget.mutate()} disabled={createBudget.isPending}>
+                  Create / Update monthly budget
+                </button>
+              </div>
+
+              <hr className="separator" />
+
+              <h3>Category Allocations</h3>
+              <div className="form-grid">
+                {categoriesQuery.data?.map((item) => (
+                  <label key={item.id}>
+                    {item.name}
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={allocationInputs[item.id] ?? ''}
+                      onChange={(e) =>
+                        setAllocationInputs((prev) => ({
+                          ...prev,
+                          [item.id]: e.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+                ))}
+                <button onClick={() => saveAllocations.mutate()} disabled={saveAllocations.isPending}>
+                  Save allocations
+                </button>
+              </div>
+            </>
+          )}
+        </article>
 
         <article className="card">
-          <h2>Category Detail</h2>
-          {!selectedCategoryId && <p>Select a category from totals.</p>}
-          {detailQuery.data && (
+          <div className="section-header">
+            <h2>Categories</h2>
+            <button
+              className="collapse-toggle"
+              onClick={() => setIsCategorySectionExpanded(!isCategorySectionExpanded)}
+              type="button"
+              title={isCategorySectionExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isCategorySectionExpanded ? '-' : '+'}
+            </button>
+          </div>
+          {isCategorySectionExpanded && (
             <>
-              <p>
-                <strong>{detailQuery.data.category_name}</strong>: ${detailQuery.data.total_amount}
-              </p>
-              <ul className="list">
-                {detailQuery.data.expenses.map((item) => (
-                  <li key={item.expense_id}>
-                    <span>{formatDisplayDate(item.spent_at)}</span>
-                    <span>{item.description}</span>
-                    <span>${item.amount}</span>
+              <div className="actions-row">
+                <input
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="New category"
+                />
+                <button onClick={() => createCategory.mutate()} disabled={createCategory.isPending || !newCategoryName.trim()}>
+                  Add
+                </button>
+              </div>
+              <ul className="list spaced-top">
+                {categoriesQuery.data?.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.name}</span>
+                    <button
+                      type="button"
+                      className="delete"
+                      onClick={() => deleteCategory.mutate(item.id)}
+                      disabled={deleteCategory.isPending}
+                    >
+                      Delete
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -374,196 +526,49 @@ export default function DashboardPage() {
       </section>
 
       <section className="card">
-        <h2>Expenses for this Period</h2>
-        <ul className="list expense-list">
-          {expensesQuery.data?.map((item) => {
-            const categoryColor = getCategoryColor(item.category_id, categories)
-            return (
-              <li
-                key={item.id}
-                style={{
-                  backgroundColor: withHexAlpha(categoryColor, '1A'),
-                  borderLeft: `4px solid ${categoryColor}`,
-                  borderRadius: '8px',
-                  paddingLeft: '0.6rem',
-                }}
-              >
-                <span className="expense-date">{formatDisplayDate(item.spent_at)}</span>
-                <span className="expense-category">{categoryNameById.get(item.category_id) ?? `Category ${item.category_id}`}</span>
-                <span className="expense-description">{item.description}</span>
-                <span className="expense-amount">${item.amount}</span>
-                <button className="secondary" onClick={() => startEditingExpense(item)} type="button">
-                  Edit
-                </button>
-                <button
-                  className="secondary delete"
-                  onClick={() => deleteExpense.mutate(item.id)}
-                  type="button"
-                  disabled={deleteExpense.isPending}
-                >
-                  Delete
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-
-      <section className="card">
-        <h2>Monthly Budget</h2>
-        <p>
-          Current: <strong>{selectedBudget ? `$${selectedBudget.planned_amount}` : 'Not set'}</strong>
-        </p>
-        <div className="form-grid">
-          <input
-            placeholder="Planned amount"
-            type="number"
-            value={budgetAmount}
-            onChange={(e) => setBudgetAmount(e.target.value)}
-          />
-          <label className="inline">
-            <input type="checkbox" checked={copyPrevious} onChange={(e) => setCopyPrevious(e.target.checked)} />
-            Copy previous month
-          </label>
-          <button onClick={() => createBudget.mutate()} disabled={createBudget.isPending}>
-            Save budget
-          </button>
-        </div>
-
-        <hr className="separator" />
         <div className="section-header">
-          <h3>Budget By Category</h3>
+          <h2>Payment Methods</h2>
           <button
             className="collapse-toggle"
-            onClick={() => setIsBudgetSectionExpanded(!isBudgetSectionExpanded)}
+            onClick={() => setIsPaymentMethodSectionExpanded(!isPaymentMethodSectionExpanded)}
             type="button"
-            title={isBudgetSectionExpanded ? 'Collapse' : 'Expand'}
+            title={isPaymentMethodSectionExpanded ? 'Collapse' : 'Expand'}
           >
-            {isBudgetSectionExpanded ? '−' : '+'}
+            {isPaymentMethodSectionExpanded ? '-' : '+'}
           </button>
         </div>
-
-        {isBudgetSectionExpanded && (
-          <div className="collapsible-content">
-            <p className="muted">Assign a monthly amount for each category.</p>
-            {!selectedBudget && <p className="muted">Create monthly budget first.</p>}
-            {selectedBudget && (
-              <div className="form-grid">
-                {categoriesQuery.data?.map((item) => (
-                  <label key={item.id}>
-                    {item.name}
-                    <input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={allocationInputs[item.id] ?? ''}
-                      onChange={(e) =>
-                        setAllocationInputs((prev) => ({
-                          ...prev,
-                          [item.id]: e.target.value,
-                        }))
-                      }
-                      placeholder="0.00"
-                    />
-                  </label>
-                ))}
-                <button onClick={() => saveAllocations.mutate()} disabled={saveAllocations.isPending} type="button">
-                  Save category allocations
-                </button>
-              </div>
-            )}
-          </div>
+        {isPaymentMethodSectionExpanded && (
+          <>
+            <div className="actions-row">
+              <input
+                value={newPaymentMethodName}
+                onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                placeholder="New payment method"
+              />
+              <button
+                onClick={() => createPaymentMethod.mutate()}
+                disabled={createPaymentMethod.isPending || !newPaymentMethodName.trim()}
+              >
+                Add
+              </button>
+            </div>
+            <ul className="list spaced-top">
+              {methodsQuery.data?.map((item) => (
+                <li key={item.id}>
+                  <span>{item.name}</span>
+                  <button
+                    type="button"
+                    className="delete"
+                    onClick={() => deletePaymentMethod.mutate(item.id)}
+                    disabled={deletePaymentMethod.isPending}
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-      </section>
-
-      <section className="grid two">
-        <article className="card">
-          <div className="section-header">
-            <h3>Edit Categories</h3>
-            <button
-              className="collapse-toggle"
-              onClick={() => setIsCategorySectionExpanded(!isCategorySectionExpanded)}
-              type="button"
-              title={isCategorySectionExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isCategorySectionExpanded ? '−' : '+'}
-            </button>
-          </div>
-
-          {isCategorySectionExpanded && (
-            <div className="collapsible-content">
-              <p className="muted">Add your own categories and remove the ones you do not use.</p>
-              <div className="actions-row">
-                <input
-                  placeholder="Example: Pets"
-                  value={newCategoryName}
-                  onChange={(e) => setNewCategoryName(e.target.value)}
-                />
-                <button
-                  onClick={() => createCategory.mutate()}
-                  disabled={createCategory.isPending || !newCategoryName.trim()}
-                  type="button"
-                >
-                  Add category
-                </button>
-              </div>
-              <ul className="list spaced-top">
-                {categoriesQuery.data?.map((item) => (
-                  <li key={item.id}>
-                    <span>{item.name}</span>
-                    <button className="secondary" onClick={() => deleteCategory.mutate(item.id)} type="button">
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </article>
-
-        <article className="card">
-          <div className="section-header">
-            <h3>Edit Payment Methods</h3>
-            <button
-              className="collapse-toggle"
-              onClick={() => setIsPaymentMethodSectionExpanded(!isPaymentMethodSectionExpanded)}
-              type="button"
-              title={isPaymentMethodSectionExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isPaymentMethodSectionExpanded ? '−' : '+'}
-            </button>
-          </div>
-
-          {isPaymentMethodSectionExpanded && (
-            <div className="collapsible-content">
-              <p className="muted">Add custom cards like Visa, Neo, and remove methods you do not use.</p>
-              <div className="actions-row">
-                <input
-                  placeholder="Example: Visa"
-                  value={newPaymentMethodName}
-                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
-                />
-                <button
-                  onClick={() => createPaymentMethod.mutate()}
-                  disabled={createPaymentMethod.isPending || !newPaymentMethodName.trim()}
-                  type="button"
-                >
-                  Add method
-                </button>
-              </div>
-              <ul className="list spaced-top">
-                {methodsQuery.data?.map((item) => (
-                  <li key={item.id}>
-                    <span>{item.name}</span>
-                    <button className="secondary" onClick={() => deletePaymentMethod.mutate(item.id)} type="button">
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </article>
       </section>
     </main>
   )

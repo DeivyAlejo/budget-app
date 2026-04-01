@@ -8,7 +8,27 @@ export type User = {
   email: string
   full_name: string | null
   is_active: boolean
+  is_admin: boolean
   created_at: string
+}
+
+export type PendingUser = {
+  id: number
+  email: string
+  full_name: string | null
+  created_at: string
+}
+
+export type InviteCode = {
+  id: number
+  code: string
+  created_at: string
+  used_at: string | null
+  used_by_user_id: number | null
+}
+
+export type InviteCodeCreateResponse = {
+  codes: string[]
 }
 
 export type Category = {

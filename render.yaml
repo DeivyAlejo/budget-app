@@ -24,12 +24,16 @@ services:
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
-      # Update these after first deploy to your actual frontend URL, e.g.
-      # https://budget-app-frontend.onrender.com
       - key: FRONTEND_URL
         value: https://budget-app-frontend.onrender.com
       - key: CORS_ORIGINS
         value: https://budget-app-frontend.onrender.com
+      - key: REGISTRATION_REQUIRES_INVITE
+        value: true
+      - key: REQUIRE_ADMIN_APPROVAL
+        value: true
+      - key: ADMIN_EMAILS
+        value: dmunoz2460@gmail.com
 
   - type: web
     name: budget-app-frontend
@@ -40,7 +44,6 @@ services:
     pullRequestPreviewsEnabled: false
     autoDeploy: true
     envVars:
-      # Update if your backend service URL differs.
       - key: VITE_API_BASE_URL
         value: https://budget-app-backend.onrender.com/api/v1
     routes:

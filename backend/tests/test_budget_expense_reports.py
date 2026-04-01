@@ -1,5 +1,11 @@
+import os
 import uuid
 from datetime import date
+
+os.environ['REGISTRATION_REQUIRES_INVITE'] = 'false'
+os.environ['REQUIRE_ADMIN_APPROVAL'] = 'false'
+os.environ['ADMIN_EMAILS'] = ''
+os.environ['ADMIN_EMAIL'] = ''
 
 from fastapi.testclient import TestClient
 

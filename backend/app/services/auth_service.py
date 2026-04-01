@@ -10,20 +10,65 @@ def get_user_by_email(db: Session, email: str) -> User | None:
     return db.scalar(stmt)
 
 
+def get_user_by_id(db: Session, user_id: int) -> User | None:
+    stmt = select(User).where(User.id == user_id)
+    return db.scalar(stmt)
+
+
 def get_user_by_google_sub(db: Session, google_sub: str) -> User | None:
     stmt = select(User).where(User.google_sub == google_sub)
     return db.scalar(stmt)
 
 
-def create_user(db: Session, *, email: str, password: str, full_name: str | None = None) -> User:
-    user = User(email=email, hashed_password=get_password_hash(password), full_name=full_name)
-    db.add(user)
-    db.commit()
+def _commit_and_refresh(db: Session, user: User) -> User:
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(user)
     return user
 
 
-def create_or_update_google_user(db: Session, *, email: str, google_sub: str, full_name: str | None = None) -> User:
+def create_user(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+    full_name: str | None = None,
+    is_active: bool = True,
+    commit: bool = True,
+) -> User:
+    user = User(
+        email=email,
+        hashed_password=get_password_hash(password),
+        full_name=full_name,
+        is_active=is_active,
+    )
+    db.add(user)
+
+    if commit:
+        return _commit_and_refresh(db, user)
+
+    db.flush()
+    db.refresh(user)
+    return user
+
+
+def activate_user(db: Session, user: User) -> User:
+    user.is_active = True
+    db.add(user)
+    return _commit_and_refresh(db, user)
+
+
+def create_or_update_google_user(
+    db: Session,
+    *,
+    email: str,
+    google_sub: str,
+    full_name: str | None = None,
+    is_active_for_new: bool = True,
+) -> User:
     user = get_user_by_google_sub(db, google_sub)
     if user:
         return user
@@ -34,15 +79,17 @@ def create_or_update_google_user(db: Session, *, email: str, google_sub: str, fu
         if not user.full_name and full_name:
             user.full_name = full_name
         db.add(user)
-        db.commit()
-        db.refresh(user)
-        return user
+        return _commit_and_refresh(db, user)
 
-    user = User(email=email, full_name=full_name, google_sub=google_sub, hashed_password=None)
+    user = User(
+        email=email,
+        full_name=full_name,
+        google_sub=google_sub,
+        hashed_password=None,
+        is_active=is_active_for_new,
+    )
     db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
+    return _commit_and_refresh(db, user)
 
 
 def authenticate_user(db: Session, *, email: str, password: str) -> User | None:
@@ -55,4 +102,4 @@ def authenticate_user(db: Session, *, email: str, password: str) -> User | None:
 
 
 def issue_token_for_user(user: User) -> str:
-    return create_access_token(subject=str(user.id), extra={"email": user.email})
+    return create_access_token(subject=str(user.id), extra={'email': user.email})

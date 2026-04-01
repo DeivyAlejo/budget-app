@@ -427,3 +427,28 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.success-message {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid #b7dfc5;
+  background: #ebf8ef;
+  color: #1f5f33;
+}
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: #eef3ff;
+  color: #1c326e;
+  border: 1px solid #c9d6ee;
+  text-decoration: none;
+}
+
+.button-link:hover {
+  background: #d9e3f5;
+}
