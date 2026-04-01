@@ -45,7 +45,7 @@ services:
     autoDeploy: true
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://budget-app-backend.onrender.com/api/v1
+        value: https://budget-app-backend-72lh.onrender.com/api/v1
     routes:
       - type: rewrite
         source: /*
