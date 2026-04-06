@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from jose import JWTError, jwt
@@ -23,7 +23,7 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(subject: str, expires_minutes: int | None = None, extra: dict[str, Any] | None = None) -> str:
     expires_delta = timedelta(minutes=expires_minutes or settings.access_token_expire_minutes)
-    expire = datetime.now(UTC) + expires_delta
+    expire = datetime.now(timezone.utc) + expires_delta
     payload: dict[str, Any] = {"sub": subject, "exp": expire}
     if extra:
         payload.update(extra)

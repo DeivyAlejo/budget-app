@@ -68,6 +68,7 @@ export type Expense = {
   description: string
   amount: string
   spent_at: string
+  is_recurring: boolean
   created_at: string
 }
 
@@ -87,4 +88,53 @@ export type CategoryDetail = {
     amount: string
     spent_at: string
   }>
+}
+
+export type RecurringTemplate = {
+  id: number
+  category_id: number
+  payment_method_id: number
+  description: string
+  amount: string
+  day_of_month: number
+  frequency: string
+  is_active: boolean
+  last_generated_year: number | null
+  last_generated_month: number | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type RecurringTemplateCreate = {
+  category_id: number
+  payment_method_id: number
+  description: string
+  amount: string
+  day_of_month: number
+  frequency?: string
+  is_active?: boolean
+  notes?: string | null
+}
+
+export type GenerationSummary = {
+  template_id: number
+  created_count: number
+  total_amount: string
+  month: number
+  year: number
+}
+
+export type ReminderCard = {
+  reminder_type: string
+  title: string
+  message: string
+  severity: string
+  action_url: string | null
+}
+
+export type RemindersResponse = {
+  year: number
+  month: number
+  cards: ReminderCard[]
 }

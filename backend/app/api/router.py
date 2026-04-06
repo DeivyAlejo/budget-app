@@ -7,6 +7,8 @@ from app.api.routes.categories import router as categories_router
 from app.api.routes.expenses import router as expenses_router
 from app.api.routes.health import router as health_router
 from app.api.routes.payment_methods import router as payment_methods_router
+from app.api.routes.recurring import router as recurring_router
+from app.api.routes.reminders import router as reminders_router
 from app.api.routes.reports import router as reports_router
 
 api_router = APIRouter()
@@ -17,4 +19,6 @@ api_router.include_router(categories_router)
 api_router.include_router(payment_methods_router)
 api_router.include_router(budgets_router)
 api_router.include_router(expenses_router)
+api_router.include_router(recurring_router)
+api_router.include_router(reminders_router)
 api_router.include_router(reports_router)

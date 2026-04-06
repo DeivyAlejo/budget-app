@@ -10,6 +10,7 @@ class ExpenseCreate(BaseModel):
     description: str = Field(min_length=1, max_length=500)
     amount: Decimal = Field(gt=0)
     spent_at: date
+    is_recurring: bool = False
 
 
 class ExpenseUpdate(BaseModel):
@@ -18,6 +19,7 @@ class ExpenseUpdate(BaseModel):
     description: str = Field(min_length=1, max_length=500)
     amount: Decimal = Field(gt=0)
     spent_at: date
+    is_recurring: bool = False
 
 
 class ExpenseRead(BaseModel):
@@ -29,4 +31,5 @@ class ExpenseRead(BaseModel):
     description: str
     amount: Decimal
     spent_at: date
+    is_recurring: bool
     created_at: datetime

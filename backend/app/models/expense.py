@@ -1,7 +1,7 @@
-from datetime import UTC, date, datetime
+from datetime import timezone, date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -17,4 +17,5 @@ class Expense(Base):
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     spent_at: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

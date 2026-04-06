@@ -333,7 +333,7 @@ button:disabled {
 }
 
 .expense-list li {
-  grid-template-columns: auto auto 1fr auto auto auto;
+  grid-template-columns: auto auto 1fr auto auto auto auto;
   border-bottom: none;
 }
 
@@ -356,7 +356,7 @@ button:disabled {
 }
 
 .expense-list li {
-  grid-template-columns: 130px 160px minmax(220px, 1fr) 110px auto auto;
+  grid-template-columns: 130px 160px minmax(180px, 1fr) 90px 110px auto auto;
   align-items: center;
   column-gap: 0.85rem;
 }
@@ -374,6 +374,25 @@ button:disabled {
   font-weight: 600;
   min-width: 90px;
 }
+.expense-recurring {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6366f1;
+  white-space: nowrap;
+  justify-self: start;
+}
+
+.expense-recurring-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+  justify-self: start;
+}
+
 
 @media (max-width: 900px) {
   .expense-list li,

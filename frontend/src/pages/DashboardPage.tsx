@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null)
   const [expenseFormError, setExpenseFormError] = useState('')
+  const [makeRecurring, setMakeRecurring] = useState(false)
 
   const addExpenseCardRef = useRef<HTMLElement | null>(null)
 
@@ -131,6 +132,7 @@ export default function DashboardPage() {
     setCategoryId(null)
     setPaymentMethodId(null)
     setExpenseFormError('')
+    setMakeRecurring(false)
   }
 
   const createBudget = useMutation({
@@ -209,6 +211,7 @@ export default function DashboardPage() {
         description: description.trim(),
         amount: Number(amount),
         spent_at: spentAt,
+        is_recurring: makeRecurring,
       }
 
       if (editingExpenseId) {
@@ -218,8 +221,28 @@ export default function DashboardPage() {
       return apiClient.post('/expenses', payload)
     },
     onSuccess: async () => {
+      // If marked as recurring, create a recurring template
+      if (makeRecurring && !editingExpenseId) {
+        try {
+          const dayOfMonth = new Date(spentAt).getDate()
+          await apiClient.post('/recurring-expenses', {
+            category_id: categoryId,
+            payment_method_id: paymentMethodId,
+            description: description.trim(),
+            amount: Number(amount),
+            day_of_month: dayOfMonth,
+            frequency: 'monthly',
+            is_active: true,
+            notes: 'Created from expense',
+          })
+        } catch (err) {
+          console.error('Failed to create recurring template:', err)
+        }
+      }
       resetExpenseForm()
       await refreshAll()
+      await queryClient.invalidateQueries({ queryKey: ['recurring-templates'] })
+      await queryClient.invalidateQueries({ queryKey: ['reminders'] })
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Could not save expense'
@@ -250,6 +273,7 @@ export default function DashboardPage() {
     setSpentAt(expense.spent_at)
     setCategoryId(expense.category_id)
     setPaymentMethodId(expense.payment_method_id)
+    setMakeRecurring(expense.is_recurring)
     setExpenseFormError('')
 
     addExpenseCardRef.current?.scrollIntoView({
@@ -290,7 +314,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
-
       <section className="grid two">
         <article className="card" ref={addExpenseCardRef}>
           <h2>{editingExpenseId ? 'Edit Expense' : 'Add Expense'}</h2>
@@ -314,6 +337,14 @@ export default function DashboardPage() {
             <input placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
             <input placeholder="Amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} />
             <input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', gridColumn: 'span 2' }}>
+              <input
+                type="checkbox"
+                checked={makeRecurring}
+                onChange={(e) => setMakeRecurring(e.target.checked)}
+              />
+              <span>Add as recurring monthly expense</span>
+            </label>
             {expenseFormError && <p className="error">{expenseFormError}</p>}
             <div className="actions-row">
               <button onClick={() => saveExpense.mutate()} disabled={saveExpense.isPending}>
@@ -334,9 +365,44 @@ export default function DashboardPage() {
         </article>
       </section>
 
+      <section className="card">
+        <h2>Expenses Table</h2>
+        <ul className="list expense-list">
+          {expensesQuery.data?.map((item) => {
+            const categoryName = categoryNameById.get(item.category_id) ?? 'Unknown'
+            const categoryColor = getCategoryColor(item.category_id, categories)
+
+            return (
+              <li
+                key={item.id}
+                style={{
+                  backgroundColor: withHexAlpha(categoryColor, '17'),
+                  borderRadius: '10px',
+                  padding: '0.55rem 0.7rem',
+                }}
+              >
+                <span className="expense-date">{formatDisplayDate(item.spent_at)}</span>
+                <strong className="expense-category" style={{ color: categoryColor }}>
+                  {categoryName}
+                </strong>
+                <span className="expense-description">{item.description}</span>
+                <span className="expense-recurring">{item.is_recurring ? 'Recurring' : ''}</span>
+                <span className="expense-amount">{currencyFormatter.format(Number(item.amount))}</span>
+                <button type="button" onClick={() => startEditingExpense(item)}>
+                  Edit
+                </button>
+                <button type="button" className="delete" onClick={() => deleteExpense.mutate(item.id)}>
+                  Delete
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </section>
+
       <section className="grid two">
         <article className="card">
-          <h2>Category Totals</h2>
+          <h2>Category Goals</h2>
           <ul className="list category-totals-list">
             {totalsQuery.data?.map((item) => {
               const categoryColor = getCategoryColor(item.category_id, categories)
@@ -362,125 +428,32 @@ export default function DashboardPage() {
         </article>
 
         <article className="card">
-          <h2>Expenses Table</h2>
-          <ul className="list expense-list">
-            {expensesQuery.data?.map((item) => {
-              const categoryName = categoryNameById.get(item.category_id) ?? 'Unknown'
-              const categoryColor = getCategoryColor(item.category_id, categories)
-
-              return (
-                <li
-                  key={item.id}
-                  style={{
-                    backgroundColor: withHexAlpha(categoryColor, '17'),
-                    borderRadius: '10px',
-                    padding: '0.55rem 0.7rem',
-                  }}
-                >
-                  <span className="expense-date">{formatDisplayDate(item.spent_at)}</span>
-                  <strong className="expense-category" style={{ color: categoryColor }}>
-                    {categoryName}
-                  </strong>
-                  <span className="expense-description">{item.description}</span>
-                  <span className="expense-amount">{currencyFormatter.format(Number(item.amount))}</span>
-                  <button type="button" onClick={() => startEditingExpense(item)}>
-                    Edit
-                  </button>
-                  <button type="button" className="delete" onClick={() => deleteExpense.mutate(item.id)}>
-                    Delete
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        </article>
-      </section>
-
-      {selectedCategoryId && detailQuery.data && (
-        <section className="card">
-          <h2>{detailQuery.data.category_name} Details</h2>
-          <p>
-            Total: <strong>{currencyFormatter.format(Number(detailQuery.data.total_amount))}</strong>
-          </p>
-          <ul className="list">
-            {detailQuery.data.expenses.map((item) => (
-              <li key={item.expense_id}>
-                <span>{formatDisplayDate(item.spent_at)}</span>
-                <span>{item.description}</span>
-                <span>{currencyFormatter.format(Number(item.amount))}</span>
-              </li>
-            ))}
-          </ul>
-          <button className="secondary" onClick={() => setSelectedCategoryId(null)}>
-            Close
-          </button>
-        </section>
-      )}
-
-      <section className="grid two">
-        <article className="card">
-          <div className="section-header">
-            <h2>Monthly Budget</h2>
-            <button
-              className="collapse-toggle"
-              onClick={() => setIsBudgetSectionExpanded(!isBudgetSectionExpanded)}
-              type="button"
-              title={isBudgetSectionExpanded ? 'Collapse' : 'Expand'}
-            >
-              {isBudgetSectionExpanded ? '-' : '+'}
-            </button>
-          </div>
-          {isBudgetSectionExpanded && (
+          {selectedCategoryId && detailQuery.data ? (
             <>
-              <p className="muted">Selected: {year}-{String(month).padStart(2, '0')}</p>
-              <div className="form-grid">
-                <input
-                  type="number"
-                  placeholder="Planned amount"
-                  value={budgetAmount}
-                  onChange={(e) => setBudgetAmount(e.target.value)}
-                />
-                <label className="inline">
-                  <input
-                    type="checkbox"
-                    checked={copyPrevious}
-                    onChange={(e) => setCopyPrevious(e.target.checked)}
-                  />
-                  Copy allocations from previous month
-                </label>
-                <button onClick={() => createBudget.mutate()} disabled={createBudget.isPending}>
-                  Create / Update monthly budget
-                </button>
-              </div>
-
-              <hr className="separator" />
-
-              <h3>Category Allocations</h3>
-              <div className="form-grid">
-                {categoriesQuery.data?.map((item) => (
-                  <label key={item.id}>
-                    {item.name}
-                    <input
-                      type="number"
-                      placeholder="0"
-                      value={allocationInputs[item.id] ?? ''}
-                      onChange={(e) =>
-                        setAllocationInputs((prev) => ({
-                          ...prev,
-                          [item.id]: e.target.value,
-                        }))
-                      }
-                    />
-                  </label>
+              <h2>{detailQuery.data.category_name} Details</h2>
+              <p>
+                Total: <strong>{currencyFormatter.format(Number(detailQuery.data.total_amount))}</strong>
+              </p>
+              <ul className="list">
+                {detailQuery.data.expenses.map((item) => (
+                  <li key={item.expense_id}>
+                    <span>{formatDisplayDate(item.spent_at)}</span>
+                    <span>{item.description}</span>
+                    <span>{currencyFormatter.format(Number(item.amount))}</span>
+                  </li>
                 ))}
-                <button onClick={() => saveAllocations.mutate()} disabled={saveAllocations.isPending}>
-                  Save allocations
-                </button>
-              </div>
+              </ul>
+            </>
+          ) : (
+            <>
+              <h2>Category Details</h2>
+              <p className="muted">Click on a category to see details.</p>
             </>
           )}
         </article>
+      </section>
 
+      <section className="grid two">
         <article className="card">
           <div className="section-header">
             <h2>Categories</h2>
@@ -523,50 +496,113 @@ export default function DashboardPage() {
             </>
           )}
         </article>
+
+        <article className="card">
+          <div className="section-header">
+            <h2>Payment Methods</h2>
+            <button
+              className="collapse-toggle"
+              onClick={() => setIsPaymentMethodSectionExpanded(!isPaymentMethodSectionExpanded)}
+              type="button"
+              title={isPaymentMethodSectionExpanded ? 'Collapse' : 'Expand'}
+            >
+              {isPaymentMethodSectionExpanded ? '-' : '+'}
+            </button>
+          </div>
+          {isPaymentMethodSectionExpanded && (
+            <>
+              <div className="actions-row">
+                <input
+                  value={newPaymentMethodName}
+                  onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                  placeholder="New payment method"
+                />
+                <button
+                  onClick={() => createPaymentMethod.mutate()}
+                  disabled={createPaymentMethod.isPending || !newPaymentMethodName.trim()}
+                >
+                  Add
+                </button>
+              </div>
+              <ul className="list spaced-top">
+                {methodsQuery.data?.map((item) => (
+                  <li key={item.id}>
+                    <span>{item.name}</span>
+                    <button
+                      type="button"
+                      className="delete"
+                      onClick={() => deletePaymentMethod.mutate(item.id)}
+                      disabled={deletePaymentMethod.isPending}
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </article>
       </section>
 
       <section className="card">
         <div className="section-header">
-          <h2>Payment Methods</h2>
+          <h2>Monthly Budget</h2>
           <button
             className="collapse-toggle"
-            onClick={() => setIsPaymentMethodSectionExpanded(!isPaymentMethodSectionExpanded)}
+            onClick={() => setIsBudgetSectionExpanded(!isBudgetSectionExpanded)}
             type="button"
-            title={isPaymentMethodSectionExpanded ? 'Collapse' : 'Expand'}
+            title={isBudgetSectionExpanded ? 'Collapse' : 'Expand'}
           >
-            {isPaymentMethodSectionExpanded ? '-' : '+'}
+            {isBudgetSectionExpanded ? '-' : '+'}
           </button>
         </div>
-        {isPaymentMethodSectionExpanded && (
+        {isBudgetSectionExpanded && (
           <>
-            <div className="actions-row">
+            <p className="muted">Selected: {year}-{String(month).padStart(2, '0')}</p>
+            <div className="form-grid">
               <input
-                value={newPaymentMethodName}
-                onChange={(e) => setNewPaymentMethodName(e.target.value)}
-                placeholder="New payment method"
+                type="number"
+                placeholder="Planned amount"
+                value={budgetAmount}
+                onChange={(e) => setBudgetAmount(e.target.value)}
               />
-              <button
-                onClick={() => createPaymentMethod.mutate()}
-                disabled={createPaymentMethod.isPending || !newPaymentMethodName.trim()}
-              >
-                Add
+              <label className="inline">
+                <input
+                  type="checkbox"
+                  checked={copyPrevious}
+                  onChange={(e) => setCopyPrevious(e.target.checked)}
+                />
+                Copy allocations from previous month
+              </label>
+              <button onClick={() => createBudget.mutate()} disabled={createBudget.isPending}>
+                Create / Update monthly budget
               </button>
             </div>
-            <ul className="list spaced-top">
-              {methodsQuery.data?.map((item) => (
-                <li key={item.id}>
-                  <span>{item.name}</span>
-                  <button
-                    type="button"
-                    className="delete"
-                    onClick={() => deletePaymentMethod.mutate(item.id)}
-                    disabled={deletePaymentMethod.isPending}
-                  >
-                    Delete
-                  </button>
-                </li>
+
+            <hr className="separator" />
+
+            <h3>Category Allocations</h3>
+            <div className="form-grid">
+              {categoriesQuery.data?.map((item) => (
+                <label key={item.id}>
+                  {item.name}
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={allocationInputs[item.id] ?? ''}
+                    onChange={(e) =>
+                      setAllocationInputs((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                  />
+                </label>
               ))}
-            </ul>
+              <button onClick={() => saveAllocations.mutate()} disabled={saveAllocations.isPending}>
+                Save allocations
+              </button>
+            </div>
           </>
         )}
       </section>

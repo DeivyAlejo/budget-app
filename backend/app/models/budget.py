@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, UniqueConstraint
@@ -17,10 +17,10 @@ class Budget(Base):
     month: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     planned_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     copied_from_budget_id: Mapped[int | None] = mapped_column(ForeignKey("budgets.id", ondelete="SET NULL"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
-        onupdate=lambda: datetime.now(UTC),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
         nullable=False,
     )

@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, UniqueConstraint
@@ -15,4 +15,4 @@ class BudgetCategoryAllocation(Base):
     budget_id: Mapped[int] = mapped_column(ForeignKey("budgets.id", ondelete="CASCADE"), nullable=False, index=True)
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id", ondelete="CASCADE"), nullable=False, index=True)
     allocated_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)

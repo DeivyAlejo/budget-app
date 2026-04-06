@@ -53,6 +53,7 @@ def create_expense(payload: ExpenseCreate, db: Session = Depends(get_db), curren
         description=payload.description.strip(),
         amount=payload.amount,
         spent_at=payload.spent_at,
+        is_recurring=payload.is_recurring,
     )
     db.add(expense)
     db.commit()
@@ -99,6 +100,7 @@ def update_expense(
     expense.description = payload.description.strip()
     expense.amount = payload.amount
     expense.spent_at = payload.spent_at
+    expense.is_recurring = payload.is_recurring
 
     db.add(expense)
     db.commit()

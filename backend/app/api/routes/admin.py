@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -79,7 +79,7 @@ def create_invite_codes(
     admin_user: User = Depends(get_current_admin_user),
 ) -> InviteCodeCreateResponse:
     codes = _generate_unique_codes(db, count=payload.count, length=payload.length)
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
 
     records = [
         InviteCode(code=code, created_by_user_id=admin_user.id, created_at=now)

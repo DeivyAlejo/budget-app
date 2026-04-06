@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 
 from authlib.integrations.starlette_client import OAuth
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -66,7 +66,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registe
 
         if invite_code_record:
             invite_code_record.used_by_user_id = user.id
-            invite_code_record.used_at = datetime.now(UTC)
+            invite_code_record.used_at = datetime.now(timezone.utc)
             db.add(invite_code_record)
             db.commit()
             db.refresh(user)

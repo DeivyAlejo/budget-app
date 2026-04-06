@@ -4,6 +4,7 @@ from app.models.category import Category
 from app.models.expense import Expense
 from app.models.invite_code import InviteCode
 from app.models.payment_method import PaymentMethod
+from app.models.recurring_template import RecurringTemplate
 from app.models.user import User
 from app.models.user_hidden_category import UserHiddenCategory
 from app.models.user_hidden_payment_method import UserHiddenPaymentMethod
@@ -18,4 +19,5 @@ __all__ = [
     'UserHiddenCategory',
     'UserHiddenPaymentMethod',
     'InviteCode',
+    'RecurringTemplate',
 ]
