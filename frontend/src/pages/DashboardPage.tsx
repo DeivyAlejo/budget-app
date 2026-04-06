@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiClient } from '../api/client'
 import { useAuth } from '../auth/AuthContext'
 import ExpenseChart from '../components/ExpenseChart'
+import IncomeChart from '../components/IncomeChart'
 import { formatDisplayDate } from '../utils/dateFormat'
 import { getCategoryColor, withHexAlpha } from '../utils/categoryColors'
 import type {
@@ -14,6 +15,7 @@ import type {
   CategoryDetail,
   CategoryTotal,
   Expense,
+  Income,
   PaymentMethod,
   User,
 } from '../types/api'
@@ -48,6 +50,13 @@ export default function DashboardPage() {
   const [paymentMethodId, setPaymentMethodId] = useState<number | null>(null)
   const [expenseFormError, setExpenseFormError] = useState('')
   const [makeRecurring, setMakeRecurring] = useState(false)
+
+  const [editingIncomeId, setEditingIncomeId] = useState<number | null>(null)
+  const [incomeDescription, setIncomeDescription] = useState('')
+  const [incomeAmount, setIncomeAmount] = useState('')
+  const [incomeType, setIncomeType] = useState('salary')
+  const [incomeReceivedAt, setIncomeReceivedAt] = useState(new Date().toISOString().slice(0, 10))
+  const [incomeFormError, setIncomeFormError] = useState('')
 
   const addExpenseCardRef = useRef<HTMLElement | null>(null)
 
@@ -112,6 +121,11 @@ export default function DashboardPage() {
     setAllocationInputs(next)
   }, [allocationsQuery.data, selectedBudget?.id])
 
+  const incomeQuery = useQuery({
+    queryKey: ['income', year, month],
+    queryFn: async () => (await apiClient.get<Income[]>(`/income?year=${year}&month=${month}`)).data,
+  })
+
   const refreshAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['categories'] }),
@@ -121,6 +135,7 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['expenses'] }),
       queryClient.invalidateQueries({ queryKey: ['totals'] }),
       queryClient.invalidateQueries({ queryKey: ['detail'] }),
+      queryClient.invalidateQueries({ queryKey: ['income'] }),
     ])
   }
 
@@ -192,6 +207,49 @@ export default function DashboardPage() {
     mutationFn: async (id: number) => apiClient.delete(`/payment-methods/${id}`),
     onSuccess: refreshAll,
   })
+
+  const resetIncomeForm = () => {
+    setEditingIncomeId(null)
+    setIncomeDescription('')
+    setIncomeAmount('')
+    setIncomeType('salary')
+    setIncomeReceivedAt(new Date().toISOString().slice(0, 10))
+    setIncomeFormError('')
+  }
+
+  const saveIncome = useMutation({
+    mutationFn: async () => {
+      if (!incomeDescription.trim()) throw new Error('Description is required')
+      if (!incomeAmount || Number(incomeAmount) <= 0) throw new Error('Amount must be greater than 0')
+      const payload = {
+        description: incomeDescription.trim(),
+        amount: Number(incomeAmount),
+        income_type: incomeType,
+        received_at: incomeReceivedAt,
+      }
+      if (editingIncomeId) return apiClient.put(`/income/${editingIncomeId}`, payload)
+      return apiClient.post('/income', payload)
+    },
+    onSuccess: () => {
+      resetIncomeForm()
+      queryClient.invalidateQueries({ queryKey: ['income'] })
+    },
+    onError: (err: Error) => setIncomeFormError(err.message),
+  })
+
+  const deleteIncome = useMutation({
+    mutationFn: (id: number) => apiClient.delete(`/income/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['income'] }),
+  })
+
+  const startEditingIncome = (item: Income) => {
+    setEditingIncomeId(item.id)
+    setIncomeDescription(item.description)
+    setIncomeAmount(item.amount)
+    setIncomeType(item.income_type)
+    setIncomeReceivedAt(item.received_at)
+    setIncomeFormError('')
+  }
 
   const saveExpense = useMutation({
     mutationFn: async () => {
@@ -266,6 +324,14 @@ export default function DashboardPage() {
     [expensesQuery.data],
   )
 
+  const totalIncomeValue = useMemo(
+    () => (incomeQuery.data ?? []).reduce((sum, item) => sum + Number(item.amount), 0),
+    [incomeQuery.data],
+  )
+
+  const netBalance = totalIncomeValue - monthlySpentValue
+  const budgetOverIncome = totalIncomeValue > 0 && selectedBudgetValue > totalIncomeValue
+
   const startEditingExpense = (expense: Expense) => {
     setEditingExpenseId(expense.id)
     setDescription(expense.description)
@@ -305,12 +371,24 @@ export default function DashboardPage() {
         <h2>Month Snapshot</h2>
         <div className="monthly-summary-grid">
           <div className="monthly-summary-item">
-            <span className="monthly-summary-label">Total Budget</span>
-            <strong>{currencyFormatter.format(selectedBudgetValue)}</strong>
+            <span className="monthly-summary-label">Planned Budget</span>
+            <strong style={{ color: budgetOverIncome ? 'var(--color-danger, #ef4444)' : undefined }}>
+              {currencyFormatter.format(selectedBudgetValue)}
+            </strong>
+          </div>
+          <div className="monthly-summary-item">
+            <span className="monthly-summary-label">Total Income</span>
+            <strong>{currencyFormatter.format(totalIncomeValue)}</strong>
           </div>
           <div className="monthly-summary-item">
             <span className="monthly-summary-label">Spent So Far</span>
             <strong>{currencyFormatter.format(monthlySpentValue)}</strong>
+          </div>
+          <div className="monthly-summary-item">
+            <span className="monthly-summary-label">Net Balance</span>
+            <strong style={{ color: netBalance >= 0 ? 'var(--color-success, #22c55e)' : 'var(--color-danger, #ef4444)' }}>
+              {currencyFormatter.format(netBalance)}
+            </strong>
           </div>
         </div>
       </section>
@@ -542,6 +620,68 @@ export default function DashboardPage() {
             </>
           )}
         </article>
+      </section>
+
+      <section className="grid two">
+        <article className="card">
+          <h2>{editingIncomeId ? 'Edit Income' : 'Add Income'}</h2>
+          <div className="form-grid">
+            <select value={incomeType} onChange={(e) => setIncomeType(e.target.value)}>
+              <option value="salary">Salary</option>
+              <option value="freelance">Freelance</option>
+              <option value="bonus">Bonus</option>
+              <option value="other">Other</option>
+            </select>
+            <input
+              placeholder="Description"
+              value={incomeDescription}
+              onChange={(e) => setIncomeDescription(e.target.value)}
+            />
+            <input
+              placeholder="Amount"
+              type="number"
+              value={incomeAmount}
+              onChange={(e) => setIncomeAmount(e.target.value)}
+            />
+            <input
+              type="date"
+              value={incomeReceivedAt}
+              onChange={(e) => setIncomeReceivedAt(e.target.value)}
+            />
+            {incomeFormError && <p className="error">{incomeFormError}</p>}
+            <div className="actions-row">
+              <button onClick={() => saveIncome.mutate()} disabled={saveIncome.isPending}>
+                {editingIncomeId ? 'Update income' : 'Add income'}
+              </button>
+              {editingIncomeId && (
+                <button className="secondary" onClick={resetIncomeForm} type="button">
+                  Cancel edit
+                </button>
+              )}
+            </div>
+          </div>
+        </article>
+
+        <article className="card">
+          <h2>Income by Type</h2>
+          <IncomeChart income={incomeQuery.data ?? []} size="compact" />
+        </article>
+      </section>
+
+      <section className="card">
+        <h2>Income Details Table</h2>
+        <ul className="list income-list">
+          {incomeQuery.data?.map((item) => (
+            <li key={item.id}>
+              <span className="income-date">{formatDisplayDate(item.received_at)}</span>
+              <span className="income-type-badge">{item.income_type}</span>
+              <span className="income-description">{item.description}</span>
+              <span className="income-amount">{currencyFormatter.format(Number(item.amount))}</span>
+              <button type="button" onClick={() => startEditingIncome(item)}>Edit</button>
+              <button type="button" className="delete" onClick={() => deleteIncome.mutate(item.id)}>Delete</button>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="card">

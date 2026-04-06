@@ -2,6 +2,7 @@ from app.models.budget import Budget
 from app.models.budget_category_allocation import BudgetCategoryAllocation
 from app.models.category import Category
 from app.models.expense import Expense
+from app.models.income import Income
 from app.models.invite_code import InviteCode
 from app.models.payment_method import PaymentMethod
 from app.models.recurring_template import RecurringTemplate
@@ -16,6 +17,7 @@ __all__ = [
     'Budget',
     'BudgetCategoryAllocation',
     'Expense',
+    'Income',
     'UserHiddenCategory',
     'UserHiddenPaymentMethod',
     'InviteCode',

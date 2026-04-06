@@ -9,24 +9,40 @@ This is the first MVP version of the project.
 - User authentication
   - Register and login with email/password
 - Monthly budgeting
-  - Create monthly budget
+  - Create monthly budget with planned allocations
   - Optional copy-from-previous-month behavior
   - Budget-by-category allocations
+  - Budget vs income color indicator (red if budget exceeds income)
+- Income tracking
+  - Add, edit, and delete income entries
+  - Income types: Salary, Freelance, Bonus, Other
+  - Monthly income total
+  - Income breakdown chart by type
+  - Net balance calculation (Income - Expenses)
 - Expense management
   - Add, edit, and delete expenses
   - Category and payment method assignment
+  - Mark expenses as recurring
+  - Track recurring vs one-time expenses
+- Recurring expense automation
+  - Create recurring expense templates
+  - Auto-generate recurring expenses on monthly schedule
+  - Dashboard reminders for upcoming recurring expenses
 - Category and payment method management
   - Add and delete custom categories
   - Add and delete custom payment methods
 - Reporting and dashboard
+  - Month snapshot showing: Planned Budget, Total Income, Spent So Far, Net Balance
+  - Category goals and drill-down detail view
+  - Expenses table with recurring indicator
+  - Income details table and income breakdown chart
   - Category totals and category detail drill-down
-  - Expenses table with category color coding
   - Donut expenses chart
-  - Monthly snapshot card (Budget vs Spent for selected month)
 - UX improvements
   - Collapsible management sections
   - Human-readable dates
   - Dashboard interactions that support quick editing
+  - Color-coded alerts and indicators
 
 ## Tech Stack
 
@@ -152,20 +168,25 @@ pytest
 
 Implemented and working:
 
-- Auth, budgets, categories, payment methods, expenses, and reporting endpoints
+- Auth, budgets, categories, payment methods, expenses, income, recurring expenses, and reporting endpoints
 - Dashboard with:
-  - Add expense form
-  - Donut expense chart
-  - Category totals/detail
-  - Expenses table
-  - Monthly snapshot
+  - Add expense form and expenses chart
+  - Add income form and income breakdown chart
+  - Category goals/detail panel
+  - Expenses table with recurring indicator
+  - Income details table
+  - Month snapshot (Planned Budget, Total Income, Spent, Net Balance)
+  - Color-coded budget vs income indicator
   - Management sections for categories and payment methods
+  - Recurring expense reminders
 
 ## Roadmap Ideas
 
 - Better chart label collision handling for large category sets
 - Export/reporting options
-- Recurring expense templates UX
+- Recurring income templates (similar to recurring expenses)
+- Income goals/targets per month
+- Investment/savings tracking
 - Optional PostgreSQL deployment profile
 
 ## License

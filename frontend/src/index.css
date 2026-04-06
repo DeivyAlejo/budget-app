@@ -471,3 +471,48 @@ button:disabled {
 .button-link:hover {
   background: #d9e3f5;
 }
+
+.income-list li {
+  grid-template-columns: 110px 90px minmax(150px, 1fr) 110px auto auto;
+  align-items: center;
+  column-gap: 0.85rem;
+  border-bottom: none;
+}
+
+.income-date {
+  text-align: left;
+}
+
+.income-type-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.12);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  white-space: nowrap;
+  justify-self: start;
+}
+
+.income-description {
+  text-align: left;
+}
+
+.income-amount {
+  text-align: right;
+  justify-self: end;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 90px;
+}
+
+@media (max-width: 900px) {
+  .income-list li {
+    grid-template-columns: 1fr;
+  }
+  .income-amount {
+    justify-self: start;
+    text-align: left;
+  }
+}

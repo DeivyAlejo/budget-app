@@ -138,3 +138,21 @@ export type RemindersResponse = {
   month: number
   cards: ReminderCard[]
 }
+
+export type Income = {
+  id: number
+  description: string
+  amount: string
+  income_type: string
+  received_at: string
+  created_at: string
+}
+
+export type IncomeCreate = {
+  description: string
+  amount: number
+  income_type: string
+  received_at: string
+}
+
+export type IncomeUpdate = IncomeCreate
